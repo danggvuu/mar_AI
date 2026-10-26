@@ -10,15 +10,19 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@animate-ui/react": "^2.3.0",
     "@prisma/client": "^6.4.1",
     "bcryptjs": "^3.0.2",
+    "clsx": "^2.1.1",
     "grammy": "^1.35.0",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^1.16.0",
+    "motion": "^14.6.0",
     "next": "16.4.3",
     "prisma": "^6.4.1",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",

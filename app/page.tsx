@@ -2,15 +2,16 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { motion, AnimatePresence } from 'motion/react';
 import ProductCard from '@/components/ProductCard';
 import FlashSaleTimer from '@/components/FlashSaleTimer';
+import AnimateBackground from '@/components/ui/animate-background';
 import { MOCK_PRODUCTS, CATEGORIES } from '@/lib/products-data';
 
 export default function HomePage() {
   const [activeCategory, setActiveCategory] = useState('all');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  const featuredProducts = MOCK_PRODUCTS.filter((p) => p.isFeatured);
   const flashSaleProducts = MOCK_PRODUCTS.slice(0, 4);
 
   const displayedProducts =
@@ -38,62 +39,97 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-[#f1f5f9]">
+    <div className="min-h-screen bg-[#0f172a] text-[#f1f5f9] relative overflow-hidden">
+      {/* Dynamic Motion Background */}
+      <AnimateBackground />
+
       {/* 1. HERO SECTION */}
-      <section className="relative overflow-hidden pt-12 pb-20 border-b border-slate-800">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#ee8722]/10 via-transparent to-transparent pointer-events-none" />
+      <section className="relative pt-12 pb-20 border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center max-w-3xl mx-auto">
             {/* Pill Badge */}
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#1e293b] border border-orange-500/30 text-orange-400 text-xs font-semibold mb-6 shadow-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#1e293b]/90 border border-orange-500/30 text-orange-400 text-xs font-semibold mb-6 shadow-lg backdrop-blur-md"
+            >
               <span className="w-2 h-2 rounded-full bg-orange-500 animate-ping"></span>
               Bản quyền chính chủ • Kích hoạt tự động 30s
-            </div>
+            </motion.div>
 
             {/* Main Headline */}
-            <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white leading-tight">
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight text-white leading-tight"
+            >
               Tài Khoản Bản Quyền <br className="hidden sm:inline" />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ee8722] to-amber-300">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ee8722] via-amber-400 to-orange-300">
                 Giá Rẻ – Giao Tự Động
               </span>
-            </h1>
+            </motion.h1>
 
             {/* Subheading */}
-            <p className="mt-5 text-sm sm:text-base text-slate-300 max-w-2xl mx-auto leading-relaxed">
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="mt-5 text-sm sm:text-base text-slate-300 max-w-2xl mx-auto leading-relaxed"
+            >
               Cung cấp CapCut Pro, Canva Pro, YouTube Premium, Gemini Advanced, ChatGPT Plus và hơn 40+ công cụ số uy tín. Chốt đơn tự động qua Telegram Bot & Zalo.
-            </p>
+            </motion.p>
 
-            {/* CTA Buttons */}
-            <div className="mt-8 flex flex-col sm:flex-row gap-3.5 justify-center">
-              <Link
-                href="/san-pham"
-                className="px-6 py-3.5 rounded-xl bg-[#ee8722] hover:bg-[#f5a23f] text-white font-bold text-sm shadow-xl shadow-[#ee8722]/25 transition-all transform hover:-translate-y-0.5"
-              >
-                🛒 Xem tất cả sản phẩm
-              </Link>
-              <a
-                href="https://t.me/Danggvuu_bot"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-6 py-3.5 rounded-xl bg-[#2AABEE] hover:bg-[#229ED9] text-white font-bold text-sm shadow-xl shadow-[#2AABEE]/25 flex items-center justify-center gap-2 transition-all transform hover:-translate-y-0.5"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
-                  <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-                </svg>
-                <span>Mở Telegram Bot (@Danggvuu_bot)</span>
-              </a>
-              <a
-                href="https://zalo.me/0963973205"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-6 py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm border border-slate-700 flex items-center justify-center gap-2 transition-all"
-              >
-                <span>💬 Chat Zalo (0963.973.205)</span>
-              </a>
-            </div>
+            {/* CTA Buttons with Spring Physics */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="mt-8 flex flex-col sm:flex-row gap-3.5 justify-center"
+            >
+              <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>
+                <Link
+                  href="/san-pham"
+                  className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3.5 rounded-xl bg-[#ee8722] hover:bg-[#f5a23f] text-white font-bold text-sm shadow-xl shadow-[#ee8722]/25 transition-colors"
+                >
+                  🛒 Xem tất cả sản phẩm
+                </Link>
+              </motion.div>
+
+              <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>
+                <a
+                  href="https://t.me/Danggvuu_bot"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3.5 rounded-xl bg-[#2AABEE] hover:bg-[#229ED9] text-white font-bold text-sm shadow-xl shadow-[#2AABEE]/25 gap-2 transition-colors"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+                    <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                  </svg>
+                  <span>Mở Telegram Bot (@Danggvuu_bot)</span>
+                </a>
+              </motion.div>
+
+              <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>
+                <a
+                  href="https://zalo.me/0963973205"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm border border-slate-700 gap-2 transition-colors"
+                >
+                  <span>💬 Chat Zalo (0963.973.205)</span>
+                </a>
+              </motion.div>
+            </motion.div>
 
             {/* Trust Points */}
-            <div className="mt-12 grid grid-cols-2 sm:grid-cols-4 gap-4 pt-8 border-t border-slate-800/80">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+              className="mt-12 grid grid-cols-2 sm:grid-cols-4 gap-4 pt-8 border-t border-slate-800/80"
+            >
               <div className="flex flex-col items-center">
                 <span className="text-2xl mb-1">⚡</span>
                 <span className="text-xs font-bold text-slate-200">Giao nhanh 30s</span>
@@ -114,15 +150,15 @@ export default function HomePage() {
                 <span className="text-xs font-bold text-slate-200">VietQR tiện lợi</span>
                 <span className="text-[11px] text-slate-400">Quét mã chuyển khoản</span>
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
 
       {/* 2. FLASH SALE SECTION */}
-      <section className="py-12 bg-[#0c1322] border-b border-slate-800">
+      <section className="py-12 bg-[#0c1322]/80 border-b border-slate-800 relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 bg-[#1e293b] p-4 sm:p-6 rounded-2xl border border-orange-500/30 shadow-lg">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 bg-[#1e293b]/90 backdrop-blur-md p-4 sm:p-6 rounded-2xl border border-orange-500/30 shadow-xl">
             <div className="flex items-center gap-3">
               <span className="text-3xl animate-bounce">🔥</span>
               <div>
@@ -159,8 +195,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 3. PRODUCT CATALOG WITH TABS */}
-      <section className="py-16">
+      {/* 3. PRODUCT CATALOG WITH ANIMATED TABS */}
+      <section className="py-16 relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
             <div>
@@ -177,9 +213,9 @@ export default function HomePage() {
                 <button
                   key={cat.id}
                   onClick={() => setActiveCategory(cat.id)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  className={`relative px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
                     activeCategory === cat.id
-                      ? 'bg-[#ee8722] text-white shadow-md shadow-[#ee8722]/30'
+                      ? 'bg-[#ee8722] text-white shadow-md shadow-[#ee8722]/30 font-bold'
                       : 'bg-[#1e293b] text-slate-300 hover:bg-[#253449] border border-slate-700/60'
                   }`}
                 >
@@ -190,7 +226,10 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <motion.div
+            layout
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+          >
             {displayedProducts.map((p) => (
               <ProductCard
                 key={p.id}
@@ -205,12 +244,12 @@ export default function HomePage() {
                 isFeatured={p.isFeatured}
               />
             ))}
-          </div>
+          </motion.div>
 
           <div className="text-center mt-12">
             <Link
               href="/san-pham"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#1e293b] hover:bg-[#253449] border border-slate-700 text-sm font-bold text-white transition-all shadow-md"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#1e293b] hover:bg-[#253449] border border-slate-700 text-sm font-bold text-white transition-all shadow-md hover:border-[#ee8722]/50"
             >
               <span>Xem toàn bộ danh mục sản phẩm</span>
               <span>→</span>
@@ -220,7 +259,7 @@ export default function HomePage() {
       </section>
 
       {/* 4. HOW IT WORKS (QUY TRÌNH 4 BƯỚC) */}
-      <section className="py-16 bg-[#0c1322] border-t border-slate-800">
+      <section className="py-16 bg-[#0c1322]/80 border-t border-slate-800 relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-xl mx-auto mb-12">
             <span className="text-xs font-bold text-orange-400 uppercase tracking-wider">
@@ -235,47 +274,59 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-[#1e293b] rounded-2xl border border-slate-700/80 p-6 relative">
+            <motion.div
+              whileHover={{ y: -5 }}
+              className="bg-[#1e293b] rounded-2xl border border-slate-700/80 p-6 relative shadow-lg"
+            >
               <span className="text-3xl font-black text-orange-400/20 absolute top-4 right-4">01</span>
               <div className="text-3xl mb-3">🔍</div>
               <h3 className="text-base font-bold text-white mb-2">Chọn gói tài khoản</h3>
               <p className="text-xs text-slate-400 leading-relaxed">
                 Xem chi tiết tính năng, thời hạn (1 tháng, 6 tháng, 1 năm) và mức giá ưu đãi trên web.
               </p>
-            </div>
+            </motion.div>
 
-            <div className="bg-[#1e293b] rounded-2xl border border-slate-700/80 p-6 relative">
+            <motion.div
+              whileHover={{ y: -5 }}
+              className="bg-[#1e293b] rounded-2xl border border-slate-700/80 p-6 relative shadow-lg"
+            >
               <span className="text-3xl font-black text-orange-400/20 absolute top-4 right-4">02</span>
               <div className="text-3xl mb-3">🤖</div>
               <h3 className="text-base font-bold text-white mb-2">Mở Bot hoặc Zalo</h3>
               <p className="text-xs text-slate-400 leading-relaxed">
                 Bấm nút "Mua qua Telegram Bot" hoặc "Chat Zalo". Hệ thống tự sinh mã đơn hàng chuẩn.
               </p>
-            </div>
+            </motion.div>
 
-            <div className="bg-[#1e293b] rounded-2xl border border-slate-700/80 p-6 relative">
+            <motion.div
+              whileHover={{ y: -5 }}
+              className="bg-[#1e293b] rounded-2xl border border-slate-700/80 p-6 relative shadow-lg"
+            >
               <span className="text-3xl font-black text-orange-400/20 absolute top-4 right-4">03</span>
               <div className="text-3xl mb-3">💳</div>
               <h3 className="text-base font-bold text-white mb-2">Quét mã VietQR</h3>
               <p className="text-xs text-slate-400 leading-relaxed">
                 Chuyển khoản qua mã QR hiển thị trong tin nhắn với nội dung đã được điền tự động.
               </p>
-            </div>
+            </motion.div>
 
-            <div className="bg-[#1e293b] rounded-2xl border border-slate-700/80 p-6 relative">
+            <motion.div
+              whileHover={{ y: -5 }}
+              className="bg-[#1e293b] rounded-2xl border border-slate-700/80 p-6 relative shadow-lg"
+            >
               <span className="text-3xl font-black text-orange-400/20 absolute top-4 right-4">04</span>
               <div className="text-3xl mb-3">🚀</div>
               <h3 className="text-base font-bold text-white mb-2">Nhận acc trong 30s</h3>
               <p className="text-xs text-slate-400 leading-relaxed">
                 Bot tự động gửi thông tin tài khoản (email | pass | 2FA) và hướng dẫn đăng nhập chi tiết.
               </p>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
 
-      {/* 5. FAQ SECTION */}
-      <section className="py-16 border-t border-slate-800">
+      {/* 5. FAQ SECTION WITH ANIMATE-UI EXPAND/COLLAPSE */}
+      <section className="py-16 border-t border-slate-800 relative z-10">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <span className="text-xs font-bold text-orange-400 uppercase tracking-wider">
@@ -290,7 +341,7 @@ export default function HomePage() {
             {faqs.map((faq, idx) => (
               <div
                 key={idx}
-                className="bg-[#1e293b] rounded-xl border border-slate-700/80 overflow-hidden transition-all"
+                className="bg-[#1e293b] rounded-2xl border border-slate-700/80 overflow-hidden transition-colors hover:border-slate-600 shadow-md"
               >
                 <button
                   type="button"
@@ -298,15 +349,29 @@ export default function HomePage() {
                   className="w-full p-4 sm:p-5 text-left flex justify-between items-center gap-4 cursor-pointer"
                 >
                   <span className="text-sm sm:text-base font-bold text-white">{faq.q}</span>
-                  <span className="text-orange-400 text-lg font-bold">
-                    {openFaq === idx ? '−' : '+'}
-                  </span>
+                  <motion.span
+                    animate={{ rotate: openFaq === idx ? 45 : 0 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                    className="text-orange-400 text-xl font-bold shrink-0"
+                  >
+                    +
+                  </motion.span>
                 </button>
-                {openFaq === idx && (
-                  <div className="px-4 pb-5 sm:px-5 text-xs sm:text-sm text-slate-300 border-t border-slate-800/80 pt-3 leading-relaxed">
-                    {faq.a}
-                  </div>
-                )}
+                <AnimatePresence initial={false}>
+                  {openFaq === idx && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ type: 'spring', stiffness: 350, damping: 26 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-4 pb-5 sm:px-5 text-xs sm:text-sm text-slate-300 border-t border-slate-800/80 pt-3.5 leading-relaxed">
+                        {faq.a}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             ))}
           </div>

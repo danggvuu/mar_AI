@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 
 type Tab = 'login' | 'register' | 'forgot';
 
@@ -136,19 +137,27 @@ export default function AuthModal() {
     }
   };
 
-  if (!open) return null;
-
   const inputCls =
     'w-full bg-[#0f172a] border border-[#334155] text-[#f1f5f9] placeholder-[#64748b] rounded-lg px-4 py-2.5 text-sm outline-none focus:border-[#ee8722] transition-colors';
   const labelCls = 'block text-xs font-medium text-[#94a3b8] mb-1.5';
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
-      onClick={(e) => e.target === e.currentTarget && setOpen(false)}
-    >
-      <div className="w-full max-w-md bg-[#1e293b] rounded-2xl shadow-2xl border border-[#334155] overflow-hidden">
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm"
+          onClick={(e) => e.target === e.currentTarget && setOpen(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.94, opacity: 0, y: 15 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.94, opacity: 0, y: 15 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+            className="w-full max-w-md bg-[#1e293b] rounded-2xl shadow-2xl border border-[#334155] overflow-hidden"
+          >
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-0">
           <div className="flex items-center gap-2">
@@ -343,7 +352,9 @@ export default function AuthModal() {
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
+  )}
+</AnimatePresence>
   );
 }
