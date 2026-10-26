@@ -13,21 +13,55 @@ function getUserFromRequest(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { items, guestEmail, note, productName, variantLabel, amount } = body;
+    const { items, guestEmail, note, productName } = body;
 
     const tokenPayload = getUserFromRequest(req);
 
-    if (!tokenPayload && !guestEmail) {
-      return NextResponse.json(
-        { error: 'Cần đăng nhập hoặc nhập email để đặt hàng' },
-        { status: 400 }
-      );
+    // Validate email format if guest
+    if (!tokenPayload) {
+      if (!guestEmail || typeof guestEmail !== 'string') {
+        return NextResponse.json(
+          { error: 'Vui lòng nhập địa chỉ email để nhận tài khoản' },
+          { status: 400 }
+        );
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(guestEmail.trim())) {
+        return NextResponse.json(
+          { error: 'Định dạng email không hợp lệ' },
+          { status: 400 }
+        );
+      }
     }
 
     const randomSuffix = Math.random().toString(36).substring(2, 8).toUpperCase();
     const fallbackOrderId = `ORD-${Date.now().toString().slice(-6)}-${randomSuffix}`;
     const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT || '@Danggvuu_bot';
     const zaloPhone = process.env.NEXT_PUBLIC_ZALO_PHONE || '0963973205';
+
+    // SERVER-SIDE PRICE CALCULATION (Prevents client-side parameter tampering)
+    let calculatedTotal = 0;
+    let selectedVariantLabel = '1 Năm';
+    let verifiedProductName = productName || 'Tài khoản bản quyền';
+
+    const firstItem = items?.[0];
+    const targetVariantId = firstItem?.variantId;
+
+    // Look up variant in MOCK_PRODUCTS to verify server price
+    for (const prod of MOCK_PRODUCTS) {
+      const matched = prod.variants.find((v) => v.id === targetVariantId);
+      if (matched) {
+        calculatedTotal = matched.salePrice;
+        selectedVariantLabel = matched.label;
+        verifiedProductName = prod.name;
+        break;
+      }
+    }
+
+    // Default fallback if variant not found in mock list
+    if (calculatedTotal === 0) {
+      calculatedTotal = 89000;
+    }
 
     // Try DB first if DATABASE_URL is configured
     const isDbConfigured =
@@ -36,7 +70,7 @@ export async function POST(req: NextRequest) {
 
     if (isDbConfigured) {
       try {
-        let total = 0;
+        let dbTotal = 0;
         const validatedItems: Array<{
           variantId: string;
           quantity: number;
@@ -56,11 +90,12 @@ export async function POST(req: NextRequest) {
           });
 
           if (variant) {
+            // Price computed strictly on server
             const price = Number(variant.salePrice ?? variant.price);
-            total += price * quantity;
+            dbTotal += price * Math.max(1, Math.min(10, Number(quantity) || 1));
             validatedItems.push({
               variantId,
-              quantity,
+              quantity: Math.max(1, Math.min(10, Number(quantity) || 1)),
               unitPrice: price,
               label: `${variant.product.name} - ${variant.label}`,
             });
@@ -71,10 +106,10 @@ export async function POST(req: NextRequest) {
           const order = await prisma.order.create({
             data: {
               userId: tokenPayload?.userId ?? null,
-              guestEmail: tokenPayload ? null : guestEmail,
+              guestEmail: tokenPayload ? null : guestEmail?.trim(),
               status: 'DRAFT',
-              total,
-              note: note ?? null,
+              total: dbTotal,
+              note: note ? String(note).slice(0, 500) : null,
               items: {
                 create: validatedItems.map((i) => ({
                   variantId: i.variantId,
@@ -101,30 +136,32 @@ export async function POST(req: NextRequest) {
             success: true,
             orderId: order.id,
             telegramRef,
-            total,
+            total: dbTotal,
             deepLink: getTelegramDeepLink(botUsername, telegramRef),
             zaloLink: getZaloPayUrl(zaloPhone, firstProd, telegramRef),
           });
         }
       } catch (dbErr) {
-        console.warn('DB error, using fast fallback order:', dbErr);
+        console.warn('DB error, using verified fallback order:', dbErr);
       }
     }
 
-    // Fallback order generation for fast preview & testing
-    const fallbackTotal = amount || 89000;
-    const prodName = productName || 'Tai khoan ban quyen';
+    // Fallback response with server-calculated price
     const telegramRef = `ord_${fallbackOrderId.slice(-8).toLowerCase()}`;
 
     return NextResponse.json({
       success: true,
       orderId: fallbackOrderId,
       telegramRef,
-      total: fallbackTotal,
-      productName: prodName,
-      variantLabel: variantLabel || '1 Nam',
+      total: calculatedTotal,
+      productName: verifiedProductName,
+      variantLabel: selectedVariantLabel,
       deepLink: getTelegramDeepLink(botUsername, telegramRef),
-      zaloLink: getZaloPayUrl(zaloPhone, `${prodName} (${variantLabel || ''})`, telegramRef),
+      zaloLink: getZaloPayUrl(
+        zaloPhone,
+        `${verifiedProductName} (${selectedVariantLabel})`,
+        telegramRef
+      ),
     });
   } catch (error) {
     console.error('[POST /api/orders]', error);

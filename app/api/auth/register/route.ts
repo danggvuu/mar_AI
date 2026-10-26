@@ -17,14 +17,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (password.length < 6) {
+    if (password.length < 6 || password.length > 72) {
       return NextResponse.json(
-        { error: 'Mật khẩu phải từ 6 ký tự trở lên' },
+        { error: 'Mật khẩu phải từ 6 đến 72 ký tự' },
         { status: 400 }
       );
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const cleanEmail = email.toLowerCase().trim();
+    if (!emailRegex.test(cleanEmail)) {
+      return NextResponse.json(
+        { error: 'Định dạng email không hợp lệ' },
+        { status: 400 }
+      );
+    }
     const hashedPassword = await bcrypt.hash(password, 10);
     const isDbConfigured =
       process.env.DATABASE_URL &&

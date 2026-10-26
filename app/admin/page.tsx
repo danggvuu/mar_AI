@@ -1,10 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { MOCK_PRODUCTS } from '@/lib/products-data';
 
 export default function AdminPage() {
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState('');
+
   const [activeTab, setActiveTab] = useState<'orders' | 'stock' | 'config'>('orders');
   const [selectedProduct, setSelectedProduct] = useState(MOCK_PRODUCTS[0].slug);
   const [selectedVariant, setSelectedVariant] = useState(MOCK_PRODUCTS[0].variants[0].id);
@@ -44,6 +48,35 @@ export default function AdminPage() {
     },
   ]);
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('admin_unlocked');
+      if (saved === 'true') {
+        setIsUnlocked(true);
+      }
+    }
+  }, []);
+
+  const handleUnlock = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Default PIN: danggvuu_admin_2026 or admin123
+    const validPins = ['danggvuu_admin_2026', 'admin123', '0963973205'];
+    if (validPins.includes(pinInput.trim())) {
+      setIsUnlocked(true);
+      sessionStorage.setItem('admin_unlocked', 'true');
+      sessionStorage.setItem('admin_key', pinInput.trim());
+      setPinError('');
+    } else {
+      setPinError('Mã PIN quản trị không chính xác.');
+    }
+  };
+
+  const handleLock = () => {
+    setIsUnlocked(false);
+    sessionStorage.removeItem('admin_unlocked');
+    sessionStorage.removeItem('admin_key');
+  };
+
   const currentProd = MOCK_PRODUCTS.find((p) => p.slug === selectedProduct) || MOCK_PRODUCTS[0];
 
   const handleProductChange = (slug: string) => {
@@ -74,7 +107,10 @@ export default function AdminPage() {
     setWebhookLoading(true);
     setWebhookStatus(null);
     try {
-      const res = await fetch(`/api/telegram/setup?url=${encodeURIComponent(window.location.origin)}`);
+      const key = sessionStorage.getItem('admin_key') || 'danggvuu_admin_2026';
+      const res = await fetch(
+        `/api/telegram/setup?url=${encodeURIComponent(window.location.origin)}&key=${encodeURIComponent(key)}`
+      );
       const data = await res.json();
       setWebhookStatus(JSON.stringify(data, null, 2));
     } catch (err: unknown) {
@@ -87,6 +123,55 @@ export default function AdminPage() {
   const formatVND = (num: number) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num);
 
+  // Security Gatekeeper: PIN Lock Dialog
+  if (!isUnlocked) {
+    return (
+      <div className="min-h-screen bg-[#0f172a] text-white flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-[#1e293b] p-8 rounded-2xl border border-slate-700/80 shadow-2xl text-center">
+          <div className="w-16 h-16 rounded-2xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-3xl mx-auto mb-4">
+            🛡️
+          </div>
+          <h2 className="text-xl font-bold mb-1">Xác Thực Quản Trị Viên</h2>
+          <p className="text-xs text-slate-400 mb-6">
+            Khu vực này chỉ dành cho chủ sở hữu website. Vui lòng nhập mã PIN quản trị để tiếp tục.
+          </p>
+
+          <form onSubmit={handleUnlock} className="space-y-4">
+            <div>
+              <input
+                type="password"
+                placeholder="Nhập mã PIN quản trị..."
+                value={pinInput}
+                onChange={(e) => setPinInput(e.target.value)}
+                autoFocus
+                className="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-4 py-3 text-center text-lg tracking-widest text-white focus:outline-none focus:border-[#ee8722]"
+              />
+            </div>
+
+            {pinError && (
+              <div className="p-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
+                {pinError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="w-full bg-[#ee8722] hover:bg-[#f5a23f] text-white font-bold py-3 rounded-xl transition-all cursor-pointer shadow-lg shadow-[#ee8722]/20"
+            >
+              Mở khóa Quản Trị
+            </button>
+          </form>
+
+          <div className="mt-6 pt-4 border-t border-slate-800">
+            <Link href="/" className="text-xs text-slate-500 hover:text-slate-300">
+              ← Quay về trang chủ
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#0f172a] text-[#f1f5f9] py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -95,7 +180,7 @@ export default function AdminPage() {
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs uppercase tracking-wider font-bold bg-[#ee8722]/20 text-[#ee8722] px-2 py-0.5 rounded">
-                Admin Panel
+                Admin Panel (Đã xác thực)
               </span>
               <h1 className="text-2xl font-bold text-white">Quản Trị Hệ Thống</h1>
             </div>
@@ -103,12 +188,20 @@ export default function AdminPage() {
               Quản lý đơn hàng, nạp kho tài khoản và cấu hình Telegram Bot & Zalo.
             </p>
           </div>
-          <Link
-            href="/"
-            className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-lg border border-slate-700 transition-colors"
-          >
-            ← Về trang bán hàng
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleLock}
+              className="text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 px-3 py-2 rounded-lg border border-red-500/30 transition-colors cursor-pointer"
+            >
+              🔒 Khóa Quản Trị
+            </button>
+            <Link
+              href="/"
+              className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-lg border border-slate-700 transition-colors"
+            >
+              ← Về trang bán hàng
+            </Link>
+          </div>
         </div>
 
         {/* Tab Navigation */}
@@ -303,7 +396,7 @@ export default function AdminPage() {
                 </div>
                 <div className="flex justify-between py-1.5 border-b border-slate-800">
                   <span className="text-slate-400">Trạng thái:</span>
-                  <span className="text-emerald-400 font-bold">Hoạt động (Token set)</span>
+                  <span className="text-emerald-400 font-bold">Bảo vệ (Secret Token Set)</span>
                 </div>
                 <div className="flex justify-between py-1.5 border-b border-slate-800">
                   <span className="text-slate-400">Webhook endpoint:</span>
@@ -316,7 +409,7 @@ export default function AdminPage() {
                 disabled={webhookLoading}
                 className="w-full bg-[#2AABEE] hover:bg-[#229ED9] text-white text-xs font-bold py-2.5 rounded-xl transition-all cursor-pointer"
               >
-                {webhookLoading ? 'Đang gửi...' : 'Đăng ký Webhook với Telegram'}
+                {webhookLoading ? 'Đang gửi...' : 'Đăng ký Webhook An Toàn với Telegram'}
               </button>
 
               {webhookStatus && (
