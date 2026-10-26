@@ -68,11 +68,21 @@ export default function Header() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && search.trim()) {
+                  window.location.href = `/san-pham?search=${encodeURIComponent(search.trim())}`;
+                }
+              }}
               placeholder="Tìm kiếm sản phẩm..."
               className="w-full bg-[#1e293b] border border-[#334155] text-[#f1f5f9] placeholder-[#64748b] rounded-lg px-4 py-2 text-sm outline-none focus:border-[#ee8722] transition-colors pr-10"
             />
             <button
-              className="absolute right-0 top-0 h-full px-3 text-[#94a3b8] hover:text-[#ee8722] transition-colors"
+              onClick={() => {
+                if (search.trim()) {
+                  window.location.href = `/san-pham?search=${encodeURIComponent(search.trim())}`;
+                }
+              }}
+              className="absolute right-0 top-0 h-full px-3 text-[#94a3b8] hover:text-[#ee8722] transition-colors cursor-pointer"
               aria-label="Tìm kiếm"
             >
               <svg
@@ -166,10 +176,22 @@ export default function Header() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && search.trim()) {
+                  window.location.href = `/san-pham?search=${encodeURIComponent(search.trim())}`;
+                }
+              }}
               placeholder="Tìm kiếm sản phẩm..."
               className="w-full bg-[#1e293b] border border-[#334155] text-[#f1f5f9] placeholder-[#64748b] rounded-lg px-4 py-2 text-sm outline-none focus:border-[#ee8722] transition-colors pr-10"
             />
-            <button className="absolute right-0 top-0 h-full px-3 text-[#94a3b8]">
+            <button
+              onClick={() => {
+                if (search.trim()) {
+                  window.location.href = `/san-pham?search=${encodeURIComponent(search.trim())}`;
+                }
+              }}
+              className="absolute right-0 top-0 h-full px-3 text-[#94a3b8] cursor-pointer"
+            >
               <svg
                 width="16"
                 height="16"
