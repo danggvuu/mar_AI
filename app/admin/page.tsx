@@ -2,14 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { MOCK_PRODUCTS } from '@/lib/products-data';
+import { MOCK_PRODUCTS, ProductItem } from '@/lib/products-data';
 
 export default function AdminPage() {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState('');
 
-  const [activeTab, setActiveTab] = useState<'orders' | 'stock' | 'config'>('orders');
+  const [activeTab, setActiveTab] = useState<'products' | 'orders' | 'stock' | 'config'>('products');
+  const [productsList, setProductsList] = useState<ProductItem[]>(MOCK_PRODUCTS);
+  const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
+  const [savingProduct, setSavingProduct] = useState(false);
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
+
   const [selectedProduct, setSelectedProduct] = useState(MOCK_PRODUCTS[0].slug);
   const [selectedVariant, setSelectedVariant] = useState(MOCK_PRODUCTS[0].variants[0].id);
   const [stockInput, setStockInput] = useState('');
@@ -57,9 +62,22 @@ export default function AdminPage() {
     }
   }, []);
 
+  // Fetch latest products from database
+  useEffect(() => {
+    if (isUnlocked) {
+      fetch('/api/admin/products')
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.products && data.products.length > 0) {
+            setProductsList(data.products);
+          }
+        })
+        .catch((e) => console.error(e));
+    }
+  }, [isUnlocked]);
+
   const handleUnlock = (e: React.FormEvent) => {
     e.preventDefault();
-    // Default PIN: danggvuu_admin_2026 or admin123
     const validPins = ['danggvuu_admin_2026', 'admin123', '0963973205'];
     if (validPins.includes(pinInput.trim())) {
       setIsUnlocked(true);
@@ -77,11 +95,11 @@ export default function AdminPage() {
     sessionStorage.removeItem('admin_key');
   };
 
-  const currentProd = MOCK_PRODUCTS.find((p) => p.slug === selectedProduct) || MOCK_PRODUCTS[0];
+  const currentProd = productsList.find((p) => p.slug === selectedProduct) || productsList[0];
 
   const handleProductChange = (slug: string) => {
     setSelectedProduct(slug);
-    const prod = MOCK_PRODUCTS.find((p) => p.slug === slug);
+    const prod = productsList.find((p) => p.slug === slug);
     if (prod && prod.variants.length > 0) {
       setSelectedVariant(prod.variants[0].id);
     }
@@ -101,6 +119,35 @@ export default function AdminPage() {
     setAdminOrders((prev) =>
       prev.map((o) => (o.id === id ? { ...o, status: newStatus } : o))
     );
+  };
+
+  const handleSaveProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProduct) return;
+    setSavingProduct(true);
+    setSaveSuccessMsg('');
+
+    try {
+      const res = await fetch('/api/admin/products', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingProduct),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Lỗi cập nhật');
+
+      // Update state locally
+      setProductsList((prev) =>
+        prev.map((p) => (p.id === editingProduct.id ? editingProduct : p))
+      );
+      setSaveSuccessMsg('✓ Đã lưu thay đổi vào cơ sở dữ liệu Supabase thành công!');
+      setTimeout(() => setSaveSuccessMsg(''), 4000);
+      setEditingProduct(null);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Có lỗi khi lưu');
+    } finally {
+      setSavingProduct(false);
+    }
   };
 
   const handleRegisterWebhook = async () => {
@@ -180,12 +227,12 @@ export default function AdminPage() {
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs uppercase tracking-wider font-bold bg-[#ee8722]/20 text-[#ee8722] px-2 py-0.5 rounded">
-                Admin Panel (Đã xác thực)
+                Admin Panel (Đã kết nối Supabase)
               </span>
               <h1 className="text-2xl font-bold text-white">Quản Trị Hệ Thống</h1>
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              Quản lý đơn hàng, nạp kho tài khoản và cấu hình Telegram Bot & Zalo.
+              Quản lý giá, hình ảnh sản phẩm, nạp kho và cấu hình Telegram Bot & Zalo.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -205,7 +252,17 @@ export default function AdminPage() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex gap-2 mb-8">
+        <div className="flex flex-wrap gap-2 mb-8">
+          <button
+            onClick={() => setActiveTab('products')}
+            className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
+              activeTab === 'products'
+                ? 'bg-[#ee8722] text-white shadow-lg shadow-[#ee8722]/20'
+                : 'bg-[#1e293b] text-slate-400 hover:text-white border border-slate-800'
+            }`}
+          >
+            🏷️ Quản lý Sản Phẩm (Giá & Ảnh)
+          </button>
           <button
             onClick={() => setActiveTab('orders')}
             className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
@@ -238,7 +295,281 @@ export default function AdminPage() {
           </button>
         </div>
 
-        {/* TAB 1: ORDERS */}
+        {saveSuccessMsg && (
+          <div className="mb-6 p-4 bg-emerald-500/20 border border-emerald-500/30 rounded-xl text-emerald-400 text-sm font-semibold">
+            {saveSuccessMsg}
+          </div>
+        )}
+
+        {/* TAB 1: PRODUCT MANAGEMENT (PRICE & IMAGE EDITOR) */}
+        {activeTab === 'products' && (
+          <div className="space-y-6">
+            <div className="bg-[#1e293b] rounded-2xl border border-slate-700/80 p-6 shadow-xl">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-6">
+                <div>
+                  <h3 className="font-bold text-white text-lg">Danh sách sản phẩm đang bán</h3>
+                  <p className="text-xs text-slate-400">
+                    Bấm &quot;Chỉnh sửa&quot; ở từng gói để thay đổi giá bán, đổi link ảnh hoặc bật/tắt Flash Sale.
+                  </p>
+                </div>
+                <span className="text-xs bg-emerald-500/20 text-emerald-400 font-semibold px-2.5 py-1 rounded-full border border-emerald-500/30">
+                  ● Dữ liệu Supabase thời gian thực
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {productsList.map((prod) => (
+                  <div
+                    key={prod.id}
+                    className="bg-[#0f172a] rounded-xl border border-slate-700/80 p-4 flex flex-col justify-between"
+                  >
+                    <div>
+                      {/* Thumbnail preview */}
+                      <div className="aspect-video w-full bg-[#1e293b] rounded-lg mb-3 flex items-center justify-center overflow-hidden border border-slate-800">
+                        {prod.thumbnailUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={prod.thumbnailUrl}
+                            alt={prod.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-5xl select-none">{prod.icon || '🔑'}</span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[11px] font-semibold text-orange-400 bg-orange-400/10 px-2 py-0.5 rounded">
+                          {prod.categoryName}
+                        </span>
+                        {prod.isFeatured && (
+                          <span className="text-[11px] font-bold text-red-400 bg-red-400/10 px-2 py-0.5 rounded">
+                            🔥 Flash Sale
+                          </span>
+                        )}
+                      </div>
+
+                      <h4 className="font-bold text-white text-sm line-clamp-2 mb-2">
+                        {prod.name}
+                      </h4>
+
+                      {/* Variants price list */}
+                      <div className="space-y-1 my-3 text-xs bg-[#1e293b]/60 p-2.5 rounded-lg border border-slate-800">
+                        {prod.variants.map((v) => (
+                          <div key={v.id} className="flex justify-between items-center">
+                            <span className="text-slate-300 font-medium">{v.label}:</span>
+                            <span className="text-orange-400 font-bold">
+                              {formatVND(v.salePrice)}{' '}
+                              <span className="text-slate-500 line-through text-[11px]">
+                                {formatVND(v.price)}
+                              </span>
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setEditingProduct({ ...prod })}
+                      className="w-full bg-[#ee8722] hover:bg-[#f5a23f] text-white text-xs font-bold py-2 rounded-lg transition-colors cursor-pointer mt-2"
+                    >
+                      ✏️ Chỉnh sửa giá & ảnh
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* EDITING MODAL */}
+            {editingProduct && (
+              <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="bg-[#1e293b] max-w-2xl w-full rounded-2xl border border-slate-700 p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+                  <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
+                    <h3 className="text-lg font-bold text-white">
+                      Chỉnh sửa: {editingProduct.name}
+                    </h3>
+                    <button
+                      onClick={() => setEditingProduct(null)}
+                      className="text-slate-400 hover:text-white text-xl"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleSaveProduct} className="space-y-5">
+                    {/* Name */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                        Tên sản phẩm:
+                      </label>
+                      <input
+                        type="text"
+                        value={editingProduct.name}
+                        onChange={(e) =>
+                          setEditingProduct({ ...editingProduct, name: e.target.value })
+                        }
+                        className="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-[#ee8722]"
+                      />
+                    </div>
+
+                    {/* Image URL */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                        Link ảnh sản phẩm (URL Thumbnail):
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="https://...link_anh.png (để trống nếu muốn dùng icon)"
+                        value={editingProduct.thumbnailUrl || ''}
+                        onChange={(e) =>
+                          setEditingProduct({
+                            ...editingProduct,
+                            thumbnailUrl: e.target.value,
+                          })
+                        }
+                        className="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-[#ee8722]"
+                      />
+                      {editingProduct.thumbnailUrl && (
+                        <div className="mt-2 flex items-center gap-3">
+                          <span className="text-xs text-slate-400">Xem trước ảnh:</span>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={editingProduct.thumbnailUrl}
+                            alt="Preview"
+                            className="h-12 w-20 object-cover rounded border border-slate-700"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Flash sale & Warranty */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                          Số ngày bảo hành:
+                        </label>
+                        <input
+                          type="number"
+                          value={editingProduct.warrantyDays}
+                          onChange={(e) =>
+                            setEditingProduct({
+                              ...editingProduct,
+                              warrantyDays: Number(e.target.value),
+                            })
+                          }
+                          className="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-[#ee8722]"
+                        />
+                      </div>
+                      <div className="flex items-center pt-6">
+                        <label className="flex items-center gap-2 cursor-pointer text-sm text-white font-semibold">
+                          <input
+                            type="checkbox"
+                            checked={editingProduct.isFeatured}
+                            onChange={(e) =>
+                              setEditingProduct({
+                                ...editingProduct,
+                                isFeatured: e.target.checked,
+                              })
+                            }
+                            className="w-5 h-5 accent-[#ee8722]"
+                          />
+                          <span>Bật vào Flash Sale giờ vàng</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Price and Variants */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 uppercase mb-2">
+                        Bảng giá các gói thời hạn:
+                      </label>
+                      <div className="space-y-3">
+                        {editingProduct.variants.map((v, idx) => (
+                          <div
+                            key={v.id}
+                            className="bg-[#0f172a] p-3 rounded-xl border border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-3 items-center"
+                          >
+                            <div>
+                              <span className="text-xs text-slate-400 block mb-1">Tên gói:</span>
+                              <input
+                                type="text"
+                                value={v.label}
+                                onChange={(e) => {
+                                  const newVariants = [...editingProduct.variants];
+                                  newVariants[idx].label = e.target.value;
+                                  setEditingProduct({
+                                    ...editingProduct,
+                                    variants: newVariants,
+                                  });
+                                }}
+                                className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                              />
+                            </div>
+                            <div>
+                              <span className="text-xs text-slate-400 block mb-1">
+                                Giá bán khuyến mãi (VNĐ):
+                              </span>
+                              <input
+                                type="number"
+                                value={v.salePrice}
+                                onChange={(e) => {
+                                  const newVariants = [...editingProduct.variants];
+                                  newVariants[idx].salePrice = Number(e.target.value);
+                                  setEditingProduct({
+                                    ...editingProduct,
+                                    variants: newVariants,
+                                  });
+                                }}
+                                className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-orange-400 font-bold"
+                              />
+                            </div>
+                            <div>
+                              <span className="text-xs text-slate-400 block mb-1">
+                                Giá gốc niêm yết (VNĐ):
+                              </span>
+                              <input
+                                type="number"
+                                value={v.price}
+                                onChange={(e) => {
+                                  const newVariants = [...editingProduct.variants];
+                                  newVariants[idx].price = Number(e.target.value);
+                                  setEditingProduct({
+                                    ...editingProduct,
+                                    variants: newVariants,
+                                  });
+                                }}
+                                className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-300"
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-4 border-t border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => setEditingProduct(null)}
+                        className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 rounded-xl transition-colors cursor-pointer"
+                      >
+                        Hủy
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={savingProduct}
+                        className="flex-1 bg-[#ee8722] hover:bg-[#f5a23f] text-white font-bold py-3 rounded-xl transition-colors cursor-pointer shadow-lg shadow-[#ee8722]/20"
+                      >
+                        {savingProduct ? 'Đang lưu vào Supabase...' : '💾 Lưu thay đổi ngay'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 2: ORDERS */}
         {activeTab === 'orders' && (
           <div className="bg-[#1e293b] rounded-2xl border border-slate-700/80 overflow-hidden shadow-xl">
             <div className="p-5 border-b border-slate-800 flex justify-between items-center">
@@ -301,7 +632,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* TAB 2: STOCK */}
+        {/* TAB 3: STOCK */}
         {activeTab === 'stock' && (
           <div className="bg-[#1e293b] rounded-2xl border border-slate-700/80 p-6 max-w-2xl shadow-xl">
             <h3 className="font-bold text-white text-base mb-1">Nạp kho tài khoản tự động</h3>
@@ -320,7 +651,7 @@ export default function AdminPage() {
                   onChange={(e) => handleProductChange(e.target.value)}
                   className="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-[#ee8722]"
                 >
-                  {MOCK_PRODUCTS.map((p) => (
+                  {productsList.map((p) => (
                     <option key={p.slug} value={p.slug}>
                       {p.name}
                     </option>
@@ -337,7 +668,7 @@ export default function AdminPage() {
                   onChange={(e) => setSelectedVariant(e.target.value)}
                   className="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-[#ee8722]"
                 >
-                  {currentProd.variants.map((v) => (
+                  {currentProd?.variants?.map((v) => (
                     <option key={v.id} value={v.id}>
                       {v.label} ({formatVND(v.salePrice)})
                     </option>
@@ -374,7 +705,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* TAB 3: CONFIG */}
+        {/* TAB 4: CONFIG */}
         {activeTab === 'config' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Telegram Bot */}

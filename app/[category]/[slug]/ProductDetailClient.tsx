@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { MOCK_PRODUCTS } from '@/lib/products-data';
+import { MOCK_PRODUCTS, ProductItem } from '@/lib/products-data';
 
 export default function ProductDetailClient({
   category,
@@ -11,7 +11,8 @@ export default function ProductDetailClient({
   category: string;
   slug: string;
 }) {
-  const product = MOCK_PRODUCTS.find((p) => p.slug === slug) || MOCK_PRODUCTS[0];
+  const initialProduct = MOCK_PRODUCTS.find((p) => p.slug === slug) || MOCK_PRODUCTS[0];
+  const [product, setProduct] = useState<ProductItem>(initialProduct);
 
   const [selectedVariant, setSelectedVariant] = useState(
     product.variants?.[0] || {
@@ -26,6 +27,23 @@ export default function ProductDetailClient({
   const [buyerEmail, setBuyerEmail] = useState('');
   const [activeTab, setActiveTab] = useState<'desc' | 'instructions' | 'warranty'>('desc');
   const [loadingAction, setLoadingAction] = useState<'tele' | 'zalo' | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/products/${slug}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.success && data.product) {
+          setProduct(data.product);
+          if (data.product.variants?.length > 0) {
+            setSelectedVariant((prev) => {
+              const matched = data.product.variants.find((v: { id: string }) => v.id === prev.id);
+              return matched || data.product.variants[0];
+            });
+          }
+        }
+      })
+      .catch((err) => console.error(err));
+  }, [slug]);
 
   const formatVND = (num: number) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num);
@@ -94,13 +112,22 @@ export default function ProductDetailClient({
           {/* Left Column: Visual Icon / Thumbnail */}
           <div className="lg:col-span-5 flex flex-col items-center">
             <div className="w-full aspect-square max-w-md bg-[#1e293b] rounded-2xl border border-slate-700/80 flex flex-col items-center justify-center p-8 relative overflow-hidden shadow-2xl">
-              <div className="text-8xl mb-4 transform hover:scale-110 transition-transform duration-300">
-                {product.icon || '🔑'}
-              </div>
-              <div className="absolute top-4 left-4 bg-orange-500/20 text-orange-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-orange-500/30">
+              {product.thumbnailUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={product.thumbnailUrl}
+                  alt={product.name}
+                  className="w-full h-full object-contain rounded-xl p-2 hover:scale-105 transition-transform duration-300"
+                />
+              ) : (
+                <div className="text-8xl mb-4 transform hover:scale-110 transition-transform duration-300">
+                  {product.icon || '🔑'}
+                </div>
+              )}
+              <div className="absolute top-4 left-4 bg-orange-500/20 text-orange-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-orange-500/30 backdrop-blur-md">
                 ⚡ Kích hoạt trong 30s
               </div>
-              <div className="absolute top-4 right-4 bg-emerald-500/20 text-emerald-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-emerald-500/30">
+              <div className="absolute top-4 right-4 bg-emerald-500/20 text-emerald-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-emerald-500/30 backdrop-blur-md">
                 🛡️ Bảo hành {product.warrantyDays} ngày
               </div>
               <div className="text-xs text-slate-400 mt-2 text-center">

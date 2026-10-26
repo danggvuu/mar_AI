@@ -1,23 +1,38 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'motion/react';
 import ProductCard from '@/components/ProductCard';
 import FlashSaleTimer from '@/components/FlashSaleTimer';
 import AnimateBackground from '@/components/ui/animate-background';
-import { MOCK_PRODUCTS, CATEGORIES } from '@/lib/products-data';
+import { MOCK_PRODUCTS, CATEGORIES, ProductItem } from '@/lib/products-data';
 
 export default function HomePage() {
   const [activeCategory, setActiveCategory] = useState('all');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [productsList, setProductsList] = useState<ProductItem[]>(MOCK_PRODUCTS);
 
-  const flashSaleProducts = MOCK_PRODUCTS.slice(0, 4);
+  useEffect(() => {
+    fetch('/api/products')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.success && data.products?.length > 0) {
+          setProductsList(data.products);
+        }
+      })
+      .catch((err) => console.error(err));
+  }, []);
+
+  const flashSaleProducts =
+    productsList.filter((p) => p.isFeatured).length > 0
+      ? productsList.filter((p) => p.isFeatured).slice(0, 4)
+      : productsList.slice(0, 4);
 
   const displayedProducts =
     activeCategory === 'all'
-      ? MOCK_PRODUCTS
-      : MOCK_PRODUCTS.filter((p) => p.category === activeCategory);
+      ? productsList
+      : productsList.filter((p) => p.category === activeCategory);
 
   const faqs = [
     {
@@ -184,6 +199,7 @@ export default function HomePage() {
                 name={p.name}
                 slug={p.slug}
                 category={p.category}
+                thumbnailUrl={p.thumbnailUrl}
                 icon={p.icon}
                 price={p.price}
                 salePrice={p.salePrice}
@@ -237,6 +253,7 @@ export default function HomePage() {
                 name={p.name}
                 slug={p.slug}
                 category={p.category}
+                thumbnailUrl={p.thumbnailUrl}
                 icon={p.icon}
                 price={p.price}
                 salePrice={p.salePrice}

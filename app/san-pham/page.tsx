@@ -1,15 +1,27 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import ProductCard from '@/components/ProductCard';
-import { CATEGORIES, MOCK_PRODUCTS } from '@/lib/products-data';
+import { CATEGORIES, MOCK_PRODUCTS, ProductItem } from '@/lib/products-data';
 
 export default function ProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [productsList, setProductsList] = useState<ProductItem[]>(MOCK_PRODUCTS);
+
+  useEffect(() => {
+    fetch('/api/products')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.success && data.products?.length > 0) {
+          setProductsList(data.products);
+        }
+      })
+      .catch((err) => console.error(err));
+  }, []);
 
   const filteredProducts = useMemo(() => {
-    return MOCK_PRODUCTS.filter((product) => {
+    return productsList.filter((product) => {
       const matchCat =
         selectedCategory === 'all' || product.category === selectedCategory;
       const matchSearch =
@@ -18,7 +30,7 @@ export default function ProductsPage() {
         product.description.toLowerCase().includes(searchQuery.toLowerCase());
       return matchCat && matchSearch;
     });
-  }, [selectedCategory, searchQuery]);
+  }, [productsList, selectedCategory, searchQuery]);
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-[#f1f5f9] py-8">
@@ -83,6 +95,7 @@ export default function ProductsPage() {
                 name={p.name}
                 slug={p.slug}
                 category={p.category}
+                thumbnailUrl={p.thumbnailUrl}
                 icon={p.icon}
                 price={p.price}
                 salePrice={p.salePrice}
